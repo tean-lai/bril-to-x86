@@ -1,0 +1,2 @@
+(library
+ (name bril2x86))
