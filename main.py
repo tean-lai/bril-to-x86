@@ -73,6 +73,31 @@ class Mul(Operator):
 
 
 @dataclass
+class Cmp(Operator):
+    pass
+
+
+@dataclass
+class Setl(Operator):
+    pass
+
+
+@dataclass
+class Setg(Operator):
+    pass
+
+
+@dataclass
+class Setle(Operator):
+    pass
+
+
+@dataclass
+class Setge(Operator):
+    pass
+
+
+@dataclass
 class Operand:
     pass
 
@@ -168,6 +193,16 @@ def format_operator(operator):
             return "subl"
         case Mul():
             return "imull"
+        case Cmp():
+            return "cmpl"
+        case Setl():
+            return "setl"
+        case Setg():
+            return "setg"
+        case Setle():
+            return "setle"
+        case Setge():
+            return "setge"
 
 
 def format_instruction(construct):
@@ -377,8 +412,25 @@ def func_to_assembly(func):
                 off_dest = var_slots[dest] * 8
                 lines.append(Mov("l", "%eax", f"{off_dest}(%rsp)"))
 
-            elif op == "lt":
-                pass
+            elif op in ("lt", "gt", "le", "ge"):
+                arg1, arg2 = instr["args"]
+                dest = instr["dest"]
+                off1 = var_slots[arg1] * 8
+                off2 = var_slots[arg2] * 8
+                off_dest = var_slots[dest] * 8
+
+                cmp_map = {
+                    "lt": Setl(),
+                    "gt": Setg(),
+                    "le": Setle(),
+                    "ge": Setge(),
+                }
+
+                lines.append(Mov("l", f"{off1}(%rsp)", "%eax"))
+                lines.append(Binary(Cmp(), f"{off2}(%rsp)", "%eax"))
+                lines.append(Unary(cmp_map[op], "%al"))
+                lines.append(Mov("zbl", "%al", "%eax"))
+                lines.append(Mov("l", "%eax", f"{off_dest}(%rsp)"))
 
             elif op == "ret":
                 if len(instr["args"]) > 0:
