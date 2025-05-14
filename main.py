@@ -16,7 +16,7 @@ class Instruction:
 
 @dataclass
 class Label(Instruction):
-    pass
+    name: str
 
 
 @dataclass
@@ -98,6 +98,11 @@ class Setge(Operator):
 
 
 @dataclass
+class Test(Operator):
+    pass
+
+
+@dataclass
 class Operand:
     pass
 
@@ -157,13 +162,6 @@ class Stack(Operand):
     num: int
 
 
-@dataclass
-class ParseCmdLine(Instruction):
-    src: int
-    idx: int
-    t: str
-
-
 def format_operand(operand: Operand) -> str:
     match operand:
         case Reg(name):
@@ -203,6 +201,8 @@ def format_operator(operator):
             return "setle"
         case Setge():
             return "setge"
+        case Test():
+            return "testl"
 
 
 def format_instruction(construct):
@@ -218,38 +218,14 @@ def format_instruction(construct):
             return [f"{format_operator(operator)} {src}, {dest}"]
         case AllocateStack(num):
             return [f"subq ${num}, %rsp"]
-
         case Call(t, name):
             return [f"call{t} {name}"]
-
-        # case Print(args, types):
-        #     lines = []
-        #     first = True
-        #     assert len(args) == len(types)
-        #     n = len(args)
-        #     for i in range(n):
-        #         lines.append(f"movl {args[i]}, %edi")
-        #         if types[i] == "int":
-        #             lines.append(f"callq __bril_print_int")
-        #         else:
-        #             lines.append(f"callq __bril_print_bool")
-
-        #         if i < n - 1:
-        #             lines.append("callq __bril_print_sep")
-        #         else:
-        #             lines.append("callq __bril_print_end")
-        #     return lines
-
-        # case ParseCmdLine(src, idx, t):
-        #     assert t in ["int", "bool"]
-        #     lines = []
-        #     lines.extend(format_instruction(Mov("l", f"${idx}", "%esi")))
-        #     lines.extend(format_instruction(Mov("q", src, "%rdi")))
-        #     if t == "int":
-        #         lines.append("callq __bril_parse_int")
-        #     else:
-        #         lines.append("callq __bril_parse_bool")
-        #     return lines
+        case Label(name):
+            return [f"_{name}:"]
+        case Jump(label):
+            return [f"jmp _{label}"]
+        case JumpCond(cond_code, label):
+            return [f"j{cond_code} _{label}"]
 
     raise NotImplementedError(f"Unknown instruction: {construct}")
 
@@ -303,21 +279,6 @@ def format_program(prog: Program):
 
     output.append(".subsections_via_symbols")
     return output
-
-
-# def instr_to_assembly(instr):
-#     print(instr)
-#     output = []
-#     if "op" in instr:
-#         op = instr["op"]
-#         if op == "add":
-#             pass
-#         elif op == "ret":
-#             if "args" in instr:
-#                 var = instr["args"][0]
-#                 assert len(instr["args"]) == 1
-
-#             output.append(Ret())
 
 
 def func_to_assembly(func):
@@ -389,7 +350,10 @@ def func_to_assembly(func):
         if "label" in instr:
             if debug_mode:
                 print(instr["label"])
-            pass
+
+            lines.append(Label(instr["label"]))
+            continue
+
         if "op" in instr:
             op = instr["op"]
 
@@ -397,7 +361,14 @@ def func_to_assembly(func):
                 dest = instr["dest"]
                 val = instr["value"]
                 off = var_slots[dest] * 8
-                lines.append(Mov("l", f"${val}", f"{off}(%rsp)"))
+
+                if instr["type"] == "int":
+                    lines.append(Mov("l", f"${val}", f"{off}(%rsp)"))
+                else:
+                    if val:
+                        lines.append(Mov("l", f"$1", f"{off}(%rsp)"))
+                    else:
+                        lines.append(Mov("l", f"$0", f"{off}(%rsp)"))
 
             elif op in ("add", "sub", "mul"):
                 arg1, arg2 = instr["args"]
@@ -465,6 +436,20 @@ def func_to_assembly(func):
                 off_src = var_slots[src] * 8
                 off_dest = var_slots[dest] * 8
                 lines.append(Mov("l", f"{off_src}(%rsp)", f"{off_dest}(%rsp)"))
+
+            elif op == "br":
+                true_label, false_label = instr["labels"]
+                cond_var = instr["args"][0]
+                off = var_slots[cond_var] * 8
+
+                lines.append(Mov("l", f"{off}(%rsp)", "%eax"))
+                lines.append(Binary(Test(), "%eax", "%eax"))
+                lines.append(JumpCond("ne", true_label))
+                lines.append(Jump(false_label))
+
+            elif op == "jmp":
+                target = instr["labels"][0]
+                lines.append(Jump(target))
 
             else:
                 raise NotImplementedError(f"not supported op: {op}")
