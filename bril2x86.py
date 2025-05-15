@@ -487,6 +487,8 @@ def func_to_assembly(func):
                     ret_var = instr["args"][0]
                     off = var_slots[ret_var] * 8
                     lines.append(Mov("q", f"{off}(%rsp)", "%rax"))
+                else:
+                    lines.append(Binary(Xor(), "%rax", "%rax"))
                 lines.extend([Mov("q", "%rbp", "%rsp"), Pop("q", "%rbp"), Ret()])
 
             elif op == "print":
@@ -564,7 +566,14 @@ def func_to_assembly(func):
             else:
                 raise NotImplementedError(f"not supported op: {op}")
 
-    lines.extend([Mov("q", "%rbp", "%rsp"), Pop("q", "%rbp"), Ret()])
+    lines.extend(
+        [
+            Binary(Xor(), "%rax", "%rax"),
+            Mov("q", "%rbp", "%rsp"),
+            Pop("q", "%rbp"),
+            Ret(),
+        ]
+    )
 
     return Function(func["name"], lines)
 
