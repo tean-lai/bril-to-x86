@@ -1,4 +1,0 @@
-(executable
- (public_name bril2x86)
- (name main)
- (libraries bril2x86))
