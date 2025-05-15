@@ -145,7 +145,7 @@ class Pseudo:
 
 
 @dataclass
-class Idiv(Instruction):
+class Div(Operator):
     pass
 
 
@@ -157,6 +157,11 @@ class AllocateStack(Instruction):
 @dataclass
 class Stack(Operand):
     num: int
+
+
+@dataclass
+class Cqo(Instruction):
+    pass
 
 
 def format_operand(operand: Operand) -> str:
@@ -188,6 +193,8 @@ def format_operator(operator):
             return "subq"
         case Mul():
             return "imulq"
+        case Div():
+            return "idivq"
         case Cmp():
             return "cmpq"
         case Set(code):
@@ -215,6 +222,8 @@ def format_instruction(construct):
         case AllocateStack(num):
             return [f"subq ${num}, %rsp"]
         case Call(t, name):
+            if name == "main":
+                name = "main_main"
             return [f"call{t} _{name}"]
         case Label(name):
             name = "_" + name.replace(".", "_")
@@ -225,6 +234,8 @@ def format_instruction(construct):
         case JumpCond(cond_code, label):
             label = "_" + label.replace(".", "_")
             return [f"j{cond_code} {label}"]
+        case Cqo():
+            return ["cqo"]
 
     raise NotImplementedError(f"Unknown instruction: {construct}")
 
@@ -379,7 +390,7 @@ def func_to_assembly(func):
             if debug_mode:
                 print(instr["label"])
 
-            lines.append(Label(instr["label"]))
+            lines.append(Label(func["name"] + instr["label"]))
             continue
 
         if "op" in instr:
@@ -432,6 +443,18 @@ def func_to_assembly(func):
                 lines.append(Mov("zbq", "%al", "%rax"))
                 lines.append(Mov("q", "%rax", f"{off_dest}(%rsp)"))
 
+            elif op == "div":
+                arg1, arg2 = instr["args"]
+                dest = instr["dest"]
+                off1 = var_slots[arg1] * 8
+                off2 = var_slots[arg2] * 8
+                off_dest = var_slots[dest] * 8
+
+                lines.append(Mov("q", f"{off1}(%rsp)", "%rax"))
+                lines.append(Cqo())
+                lines.append(Unary(Div(), f"{off2}(%rsp)"))
+                lines.append(Mov("q", "%rax", f"{off_dest}(%rsp)"))
+
             elif op == "ret":
                 if "args" in instr and len(instr["args"]) > 0:
                     ret_var = instr["args"][0]
@@ -473,12 +496,12 @@ def func_to_assembly(func):
 
                 lines.append(Mov("q", f"{off}(%rsp)", "%rax"))
                 lines.append(Binary(Test(), "%rax", "%rax"))
-                lines.append(JumpCond("ne", true_label))
-                lines.append(Jump(false_label))
+                lines.append(JumpCond("ne", func["name"] + true_label))
+                lines.append(Jump(func["name"] + false_label))
 
             elif op == "jmp":
                 target = instr["labels"][0]
-                lines.append(Jump(target))
+                lines.append(Jump(func["name"] + target))
 
             elif op == "call":
                 # print(instr)
