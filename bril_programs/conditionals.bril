@@ -1,0 +1,40 @@
+@main() {
+    x: int = const 1;
+    y: int = const 2;
+    z: int = const 2;
+    b1: bool = lt x y;
+    b2: bool = lt y x;
+    b3: bool = lt x z;
+    b4: bool = lt z z;
+    print b1;
+    print b2;
+    print b3;
+    print b4;
+
+    b1: bool = gt x y;
+    b2: bool = gt y x;
+    b3: bool = gt x z;
+    b4: bool = gt z z;
+    print b1;
+    print b2;
+    print b3;
+    print b4;
+
+    b1: bool = le x y;
+    b2: bool = le y x;
+    b3: bool = le x z;
+    b4: bool = le z z;
+    print b1;
+    print b2;
+    print b3;
+    print b4;
+
+    b1: bool = ge x y;
+    b2: bool = ge y x;
+    b3: bool = ge x z;
+    b4: bool = ge z z;
+    print b1;
+    print b2;
+    print b3;
+    print b4;
+}

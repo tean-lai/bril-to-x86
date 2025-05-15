@@ -1,0 +1,20 @@
+@main() {
+    b1: bool = const true;
+    b2: bool = const false;
+    x: int = const 69;
+    y: int = const 6120;
+
+    br b2 .here .there;
+.here:
+    print x;
+.there:
+    print x;
+
+    br b1 .here2 .there2;
+
+.here2:
+    print y;
+.there2:
+    print y;
+
+}

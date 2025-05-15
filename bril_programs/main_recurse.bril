@@ -1,0 +1,15 @@
+@main(x: int) {
+    n: int = const 10;
+    b: bool = lt x n;
+
+    br b .loop .done;
+
+.loop:
+    one: int = const 1;
+    print x;
+    y: int = add x one;
+    call @main y;
+
+.done:
+    ret;
+}

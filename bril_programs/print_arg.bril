@@ -1,0 +1,4 @@
+@main(n: int, b: bool) {
+    print n;
+    print b;
+}

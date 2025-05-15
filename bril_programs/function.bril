@@ -1,0 +1,20 @@
+@something(): int {
+    x: int = const 6120;
+    ret x;
+}
+
+@nothing() {
+    x: int = const 69;
+    print x;
+    ret;
+}
+
+@main(a: int, b: int) {
+    print a;
+    print b;
+
+    call @nothing;
+
+    x: int = call @something;
+    print x;
+}
