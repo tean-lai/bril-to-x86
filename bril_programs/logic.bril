@@ -1,0 +1,13 @@
+@main {
+    b1: bool = const true;
+    b2: bool = not b1;
+    b3: bool = or b1 b2;
+    b4: bool = and b1 b2;
+
+    print b1;
+    print b2;
+    print b3;
+    nop;
+    print b4;
+
+}

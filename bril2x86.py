@@ -70,6 +70,11 @@ class Not(Operator):
 
 
 @dataclass
+class Xor(Operator):
+    pass
+
+
+@dataclass
 class Add(Operator):
     pass
 
@@ -150,6 +155,16 @@ class Div(Operator):
 
 
 @dataclass
+class And(Operator):
+    pass
+
+
+@dataclass
+class Or(Operator):
+    pass
+
+
+@dataclass
 class AllocateStack(Instruction):
     num: int
 
@@ -187,6 +202,8 @@ def format_operator(operator):
             return "negq"
         case Not():
             return "notq"
+        case Xor():
+            return "xorq"
         case Add():
             return "addq"
         case Sub():
@@ -195,6 +212,10 @@ def format_operator(operator):
             return "imulq"
         case Div():
             return "idivq"
+        case And():
+            return "andq"
+        case Or():
+            return "orq"
         case Cmp():
             return "cmpq"
         case Set(code):
@@ -409,15 +430,21 @@ def func_to_assembly(func):
                     else:
                         lines.append(Mov("q", f"$0", f"{off}(%rsp)"))
 
-            elif op in ("add", "sub", "mul"):
+            elif op in ("add", "sub", "mul", "and", "or"):
                 arg1, arg2 = instr["args"]
                 dest = instr["dest"]
                 off1 = var_slots[arg1] * 8
                 off2 = var_slots[arg2] * 8
                 lines.append(Mov("q", f"{off1}(%rsp)", "%rax"))
 
-                temp = {"add": Add(), "sub": Sub(), "mul": Mul()}
-                lines.append(Binary(temp[op], f"{off2}(%rsp)", "%rax"))
+                op_map = {
+                    "add": Add(),
+                    "sub": Sub(),
+                    "mul": Mul(),
+                    "and": And(),
+                    "or": Or(),
+                }
+                lines.append(Binary(op_map[op], f"{off2}(%rsp)", "%rax"))
 
                 off_dest = var_slots[dest] * 8
                 lines.append(Mov("q", "%rax", f"{off_dest}(%rsp)"))
@@ -521,6 +548,18 @@ def func_to_assembly(func):
                 if dest is not None:
                     off_d = var_slots[dest] * 8
                     lines.append(Mov("q", "%rax", f"{off_d}(%rsp)"))
+
+            elif op == "not":
+                src = instr["args"][0]
+                dest = instr["dest"]
+                off_src = var_slots[src] * 8
+                off_dest = var_slots[dest] * 8
+                lines.append(Mov("q", f"{off_src}(%rsp)", "%rax"))
+                lines.append(Binary(Xor(), "$1", "%rax"))
+                lines.append(Mov("q", "%rax", f"{off_dest}(%rsp)"))
+
+            elif op == "nop":
+                continue
 
             else:
                 raise NotImplementedError(f"not supported op: {op}")
